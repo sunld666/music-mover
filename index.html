@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐搬家 - 智能本地歌单整理工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+        }
+        /* 自定义滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen text-gray-800 font-sans antialiased pb-10">
+
+    <div class="container mx-auto px-4 py-10 max-w-3xl">
+        
+        <div id="unsupported-banner" class="hidden bg-red-50 text-red-700 p-4 rounded-xl shadow-sm border border-red-200 mb-6 flex items-start gap-3">
+            <svg class="w-6 h-6 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            <div>
+                <h3 class="font-bold">⚠️ 浏览器不支持该工具</h3>
+                <p class="text-sm mt-1">当前浏览器不支持本地文件系统 API。请在电脑端使用最新版的 <strong>Chrome、Edge 或 Opera</strong> 浏览器打开此网页，否则无法读取本地音乐文件。</p>
+            </div>
+        </div>
+
+        <div class="text-center mb-8 flex flex-col items-center">
+            <div class="w-20 h-20 bg-indigo-600 text-white rounded-3xl shadow-xl flex items-center justify-center mb-5 transform hover:-translate-y-1 transition duration-300">
+                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
+            </div>
+            <h1 class="text-4xl font-extrabold text-indigo-950 mb-3 tracking-tight">音乐搬家</h1>
+            <p class="text-gray-600 font-medium">智能识别 TXT 歌单，将本地音乐批量搬运到指定位置</p>
+        </div>
+
+        <div class="glass-card rounded-2xl shadow-xl p-6 sm:p-8 border border-white/60 mb-6">
+            
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-indigo-900 mb-2">步骤 1：导入歌单 (TXT 文件)</label>
+                <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-indigo-200 border-dashed rounded-xl cursor-pointer bg-white hover:bg-indigo-50 transition duration-200">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <p class="text-sm text-gray-500 font-medium" id="txt-status">点击选择或拖拽上传 TXT 歌单</p>
+                    </div>
+                    <input id="txt-file" type="file" accept=".txt" class="hidden" />
+                </label>
+                
+                <div id="preview-container" class="hidden mt-3 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 text-sm">
+                    <div class="flex justify-between items-center mb-2 pb-2 border-b border-indigo-100">
+                        <span class="font-bold text-indigo-900 text-xs">📋 歌单内容预览</span>
+                        <span id="preview-count" class="font-bold text-indigo-600 text-xs bg-indigo-100 px-2 py-1 rounded-md"></span>
+                    </div>
+                    <ul id="preview-list" class="list-decimal list-inside text-gray-600 space-y-1.5 max-h-40 overflow-y-auto text-xs font-mono"></ul>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-indigo-900 mb-2">步骤 2：选择音乐库 (源文件夹)</label>
+                <button id="btn-select-source" class="w-full bg-white hover:bg-indigo-50 text-indigo-700 font-semibold py-3 px-4 border border-indigo-200 rounded-xl shadow-sm transition duration-200 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                    <span id="source-status">点击授权包含音乐的文件夹</span>
+                </button>
+            </div>
+
+            <div class="mb-8 p-5 bg-indigo-50/60 rounded-xl border border-indigo-100">
+                <label class="block text-sm font-bold text-indigo-900 mb-4">步骤 3：个性化设置</label>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1.5">保存位置：</label>
+                        <button id="btn-select-target" class="w-full bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium py-2.5 px-3 border border-gray-300 rounded-lg shadow-sm transition flex items-center justify-center gap-1.5 truncate">
+                            <svg class="w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                            <span id="target-status" class="truncate">默认存放在源文件夹下</span>
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1.5">遇到同名文件时：</label>
+                        <select id="duplicate-strategy" class="w-full bg-white border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block py-2.5 px-3 outline-none cursor-pointer">
+                            <option value="skip">跳过 (保留已有，速度更快)</option>
+                            <option value="overwrite">覆盖 (强制重新复制替换)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1.5">新生成的文件夹名称：</label>
+                    <input type="text" id="custom-folder-name" class="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block py-2.5 px-3 outline-none" placeholder="例如：我的车载歌单" value="新建音乐歌单">
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <button id="btn-start" disabled class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-bold py-4 px-4 rounded-xl shadow-lg disabled:shadow-none transition duration-200 cursor-pointer disabled:cursor-not-allowed text-center flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    确认信息，开始搬家
+                </button>
+            </div>
+
+            <div id="progress-container" class="hidden mt-6">
+                <div class="flex justify-between mb-1.5 text-sm font-semibold text-indigo-800">
+                    <span id="progress-text" class="truncate pr-4">正在准备...</span>
+                    <span id="progress-percent" class="shrink-0">0%</span>
+                </div>
+                <div class="w-full bg-indigo-100 rounded-full h-3 overflow-hidden shadow-inner">
+                    <div id="progress-bar" class="bg-indigo-500 h-3 rounded-full transition-all duration-300 relative" style="width: 0%">
+                        <div class="absolute top-0 left-0 bottom-0 right-0 bg-white opacity-20" style="animation: shimmer 2s infinite linear; background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="glass-card rounded-2xl shadow-xl p-5 border border-white/60">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
+                <h2 class="text-sm font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    运行日志
+                </h2>
+                
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button id="btn-download-missing" disabled class="flex-1 sm:flex-none text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-2 px-3 rounded-lg border border-orange-200 disabled:opacity-50 disabled:cursor-not-allowed transition text-center">
+                        缺漏清单
+                    </button>
+                    <button id="btn-download-log" disabled class="flex-1 sm:flex-none text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 px-3 rounded-lg border border-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed transition text-center">
+                        完整报告
+                    </button>
+                </div>
+            </div>
+            <div id="log-console" class="w-full h-56 bg-gray-900 text-green-400 font-mono text-xs p-4 rounded-xl overflow-y-auto shadow-inner leading-relaxed whitespace-pre-wrap">
+[系统] 环境检查完成。准备就绪。
+请按上方步骤导入 TXT 歌单并授权音乐库。</div>
+        </div>
+    </div>
+
+    <script>
+        // --- 浏览器支持检测 ---
+        if (!('showDirectoryPicker' in window)) {
+            document.getElementById('unsupported-banner').classList.remove('hidden');
+            document.getElementById('btn-start').innerText = "浏览器不支持，无法运行";
+        }
+
+        // --- 全局变量 ---
+        let playlistSongs = [];
+        let sourceDirHandle = null;
+        let targetDirHandle = null;
+        
+        let finalReportContent = "";
+        let missingSongsList = [];
+
+        // --- DOM 元素绑定 ---
+        const txtFileInput = document.getElementById('txt-file');
+        const txtStatus = document.getElementById('txt-status');
+        const previewContainer = document.getElementById('preview-container');
+        const previewList = document.getElementById('preview-list');
+        const previewCount = document.getElementById('preview-count');
+        
+        const btnSelectSource = document.getElementById('btn-select-source');
+        const sourceStatus = document.getElementById('source-status');
+        const btnSelectTarget = document.getElementById('btn-select-target');
+        const targetStatus = document.getElementById('target-status');
+        
+        const inputFolderName = document.getElementById('custom-folder-name');
+        const selectDuplicateStrategy = document.getElementById('duplicate-strategy');
+        
+        const btnStart = document.getElementById('btn-start');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressPercent = document.getElementById('progress-percent');
+        
+        const logConsole = document.getElementById('log-console');
+        const btnDownloadLog = document.getElementById('btn-download-log');
+        const btnDownloadMissing = document.getElementById('btn-download-missing');
+
+        // --- 辅助函数 ---
+        function appendLog(text, type = 'info') {
+            const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            let colorClass = 'text-green-400';
+            if (type === 'error') colorClass = 'text-red-400';
+            if (type === 'warn') colorClass = 'text-yellow-400';
+            if (type === 'success') colorClass = 'text-cyan-300';
+            if (type === 'skip') colorClass = 'text-blue-300';
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = colorClass + ' mt-1';
+            logEntry.innerText = `[${time}] ${text}`;
+            logConsole.appendChild(logEntry);
+            logConsole.scrollTop = logConsole.scrollHeight;
+        }
+
+        function checkReadyState() {
+            if (playlistSongs.length > 0 && sourceDirHandle !== null && 'showDirectoryPicker' in window) {
+                btnStart.removeAttribute('disabled');
+            } else {
+                btnStart.setAttribute('disabled', 'true');
+            }
+        }
+
+        // --- 事件监听 ---
+
+        // 步骤1：读取TXT并生成预览
+        txtFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            txtStatus.innerHTML = `<span class="text-indigo-600 font-bold">📄 已载入: ${file.name}</span>`;
+            appendLog(`读取歌单: ${file.name}`);
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const lines = event.target.result.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+                playlistSongs = lines;
+                
+                // 渲染预览列表
+                previewList.innerHTML = '';
+                const previewLimit = Math.min(lines.length, 50); // 最多预览 50 首防止页面过长
+                for(let i = 0; i < previewLimit; i++) {
+                    const li = document.createElement('li');
+                    li.className = "truncate hover:text-indigo-800 transition-colors";
+                    li.innerText = lines[i];
+                    previewList.appendChild(li);
+                }
+                if (lines.length > 50) {
+                    const liExtra = document.createElement('li');
+                    liExtra.className = "text-indigo-500 font-bold mt-2 list-none text-center";
+                    liExtra.innerText = `...以及其他 ${lines.length - 50} 首`;
+                    previewList.appendChild(liExtra);
+                }
+                
+                previewCount.innerText = `共 ${lines.length} 首`;
+                previewContainer.classList.remove('hidden');
+                
+                appendLog(`成功识别 ${lines.length} 首歌曲`, 'success');
+                checkReadyState();
+            };
+            reader.readAsText(file);
+        });
+
+        // 步骤2：选择源目录
+        btnSelectSource.addEventListener('click', async () => {
+            try {
+                sourceDirHandle = await window.showDirectoryPicker();
+                sourceStatus.innerText = `📂 音乐库: ${sourceDirHandle.name}`;
+                appendLog(`源目录授权成功: ${sourceDirHandle.name}`, 'success');
+                checkReadyState();
+            } catch (err) {
+                appendLog(`源目录授权取消或失败`, 'warn');
+            }
+        });
+
+        // 步骤3：选择目标目录 (可选)
+        btnSelectTarget.addEventListener('click', async () => {
+            try {
+                targetDirHandle = await window.showDirectoryPicker();
+                targetStatus.innerText = targetDirHandle.name;
+                appendLog(`导出位置已设定为: ${targetDirHandle.name}`);
+            } catch (err) {
+                appendLog(`导出位置授权取消`, 'warn');
+            }
+        });
+
+        // 递归扫描源文件
+        async function scanAndMapFiles(dirHandle, fileMap = new Map()) {
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind === 'file') {
+                    const lowerName = entry.name.toLowerCase();
+                    if (lowerName.endsWith('.mp3') || lowerName.endsWith('.flac') || lowerName.endsWith('.wav') || lowerName.endsWith('.m4a') || lowerName.endsWith('.ape')) {
+                        fileMap.set(lowerName, entry);
+                    }
+                } else if (entry.kind === 'directory') {
+                    if (entry.name.startsWith('新建音乐歌单') || entry.name === inputFolderName.value.trim()) {
+                        continue;
+                    }
+                    await scanAndMapFiles(entry, fileMap);
+                }
+            }
+            return fileMap;
+        }
+
+        // --- 核心执行逻辑 ---
+        btnStart.addEventListener('click', async () => {
+            if (playlistSongs.length === 0 || !sourceDirHandle) return;
+
+            btnStart.setAttribute('disabled', 'true');
+            progressContainer.classList.remove('hidden');
+            btnDownloadLog.setAttribute('disabled', 'true');
+            btnDownloadMissing.setAttribute('disabled', 'true');
+            logConsole.innerHTML = "";
+            missingSongsList = [];
+            
+            let successCount = 0, skipCount = 0, failureCount = 0;
+            let reportLines = [
+                `=======================================`,
+                `🎵 音乐搬家 - 整理报告`,
+                `生成时间: ${new Date().toLocaleString()}`,
+                `=======================================\n`
+            ];
+
+            try {
+                appendLog("正在深度扫描本地音乐，这可能需要几秒钟...");
+                const localFileMap = await scanAndMapFiles(sourceDirHandle);
+                appendLog(`扫描完毕！共检索到 ${localFileMap.size} 个音频文件。`);
+
+                let folderName = inputFolderName.value.trim();
+                if (!folderName) folderName = `新建音乐歌单_${new Date().getTime().toString().slice(-4)}`;
+                
+                const baseDirHandle = targetDirHandle ? targetDirHandle : sourceDirHandle;
+                const strategy = selectDuplicateStrategy.value;
+                
+                appendLog(`正在创建目标文件夹: ${folderName}`);
+                const finalTargetDirHandle = await baseDirHandle.getDirectoryHandle(folderName, { create: true });
+                appendLog(`准备就绪，开始搬运！ (同名策略: ${strategy === 'skip' ? '跳过' : '覆盖'})`, 'success');
+
+                for (let i = 0; i < playlistSongs.length; i++) {
+                    const rawLine = playlistSongs[i];
+                    
+                    const percent = Math.round(((i + 1) / playlistSongs.length) * 100);
+                    progressBar.style.width = `${percent}%`;
+                    progressPercent.innerText = `${percent}%`;
+                    progressText.innerText = `处理中 (${i + 1}/${playlistSongs.length})`;
+
+                    let titleQuery = rawLine, artistQuery = "";
+                    if (rawLine.includes(" - ")) {
+                        const parts = rawLine.split(" - ");
+                        titleQuery = parts[0].trim();
+                        artistQuery = parts[1] ? parts[1].trim() : "";
+                    } else if (rawLine.includes("-")) {
+                        const parts = rawLine.split("-");
+                        titleQuery = parts[0].trim();
+                        artistQuery = parts[1] ? parts[1].trim() : "";
+                    }
+
+                    const tLower = titleQuery.toLowerCase();
+                    const aLower = artistQuery.toLowerCase();
+                    let matchedFileHandle = null;
+
+                    for (const [fileName, handle] of localFileMap.entries()) {
+                        const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+                        if (aLower && nameWithoutExt.includes(tLower) && nameWithoutExt.includes(aLower)) {
+                            matchedFileHandle = handle; break;
+                        }
+                    }
+                    if (!matchedFileHandle && tLower) {
+                        for (const [fileName, handle] of localFileMap.entries()) {
+                            const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+                            if (nameWithoutExt.includes(tLower)) {
+                                matchedFileHandle = handle; break;
+                            }
+                        }
+                    }
+                    if (!matchedFileHandle) {
+                        const lineLower = rawLine.toLowerCase();
+                        for (const [fileName, handle] of localFileMap.entries()) {
+                            if (fileName.includes(lineLower) || lineLower.includes(fileName.substring(0, fileName.lastIndexOf('.')))) {
+                                matchedFileHandle = handle; break;
+                            }
+                        }
+                    }
+
+                    if (matchedFileHandle) {
+                        let shouldCopy = true;
+
+                        if (strategy === 'skip') {
+                            try {
+                                await finalTargetDirHandle.getFileHandle(matchedFileHandle.name);
+                                shouldCopy = false; 
+                                skipCount++;
+                                appendLog(`[跳过] 目标已存在: ${matchedFileHandle.name}`, 'skip');
+                                reportLines.push(`[跳过] ${rawLine} -> 目标文件夹已有同名文件，已保留`);
+                            } catch (e) {
+                                if (e.name !== 'NotFoundError') throw e; 
+                            }
+                        }
+
+                        if (shouldCopy) {
+                            try {
+                                const fileData = await matchedFileHandle.getFile();
+                                const newFileHandle = await finalTargetDirHandle.getFileHandle(matchedFileHandle.name, { create: true });
+                                const writable = await newFileHandle.createWritable();
+                                await writable.write(fileData);
+                                await writable.close();
+
+                                successCount++;
+                                appendLog(`[成功] 复制: ${matchedFileHandle.name}`);
+                                reportLines.push(`[成功] ${rawLine} -> ${matchedFileHandle.name}`);
+                            } catch (copyErr) {
+                                failureCount++;
+                                missingSongsList.push(rawLine);
+                                appendLog(`[写入失败] ${rawLine}`, 'error');
+                                reportLines.push(`[错误] ${rawLine} -> 文件写入受阻 (${copyErr.message})`);
+                            }
+                        }
+                    } else {
+                        failureCount++;
+                        missingSongsList.push(rawLine);
+                        appendLog(`[缺漏] 未找到匹配文件: ${rawLine}`, 'warn');
+                        reportLines.push(`[缺漏] ${rawLine} -> 本地音乐库无此歌曲`);
+                    }
+                }
+
+                appendLog(`\n🎉 搬家任务完成！`, 'success');
+                appendLog(`统计: 成功复制 ${successCount} 首 | 跳过已有 ${skipCount} 首 | 缺漏/失败 ${failureCount} 首`);
+                
+                reportLines.push(`\n=======================================`);
+                reportLines.push(`📊 最终统计汇总`);
+                reportLines.push(`总计处理: ${playlistSongs.length} 首`);
+                reportLines.push(`成功搬运: ${successCount} 首`);
+                if (strategy === 'skip') reportLines.push(`跳过已有: ${skipCount} 首`);
+                reportLines.push(`缺漏失败: ${failureCount} 首`);
+                reportLines.push(`=======================================`);
+                
+                finalReportContent = reportLines.join('\n');
+                
+                btnDownloadLog.removeAttribute('disabled');
+                if (missingSongsList.length > 0) {
+                    btnDownloadMissing.removeAttribute('disabled');
+                }
+
+            } catch (err) {
+                appendLog(`运行发生异常: ${err.message}`, 'error');
+            } finally {
+                btnStart.removeAttribute('disabled');
+            }
+        });
+
+        // 下载报告
+        btnDownloadLog.addEventListener('click', () => {
+            const blob = new Blob([finalReportContent], { type: 'text/plain;charset=utf-8' });
+            downloadFile(blob, `搬家完整报告_${new Date().getTime().toString().slice(-4)}.txt`);
+        });
+
+        // 仅下载缺漏名单
+        btnDownloadMissing.addEventListener('click', () => {
+            const content = missingSongsList.join('\n');
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            downloadFile(blob, `未找到的歌曲清单_${new Date().getTime().toString().slice(-4)}.txt`);
+        });
+
+        function downloadFile(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
